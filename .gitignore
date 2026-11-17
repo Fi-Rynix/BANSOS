@@ -1,0 +1,12 @@
+.env
+.env.test
+logs/
+
+# binary hasil build
+*.exe
+
+# log runtime
+*.log
+
+# laporan coverage
+coverage.out
