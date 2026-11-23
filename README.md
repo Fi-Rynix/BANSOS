@@ -40,10 +40,10 @@ Sistem mencegah dua peserta mendapat slot terakhir yang sama secara bersamaan, m
 
 | Tabel | Kolom utama | Relasi |
 |-------|-------------|--------|
-| users | id, name, email (unik), password_hash, role, created_at | Satu user punya banyak klaim dan sertifikat |
-| roles | id, name | Satu role punya banyak permission |
-| permissions | id, code (unik) | Dipakai banyak role |
-| role_permissions | role_id, permission_id | Penghubung role dan permission |
+| users | id, name, email (unik), password_hash, role_id (FK ke roles.id), created_at | Satu user punya satu role, banyak klaim dan sertifikat |
+| roles | id, name (unik), description | Satu role punya banyak user dan banyak permission |
+| permissions | id, code (unik), description | Dipakai banyak role |
+| role_permissions | role_id, permission_id | Penghubung role dan permission, unik per pasangan |
 | modules | id, code (unik), title, category, level, description, is_active, created_at | Satu modul punya banyak batch |
 | batches | id, module_id, quota, allocated, opens_at, closes_at, status, created_at | Milik satu modul, punya banyak klaim |
 | claims | id, user_id, batch_id, status, claimed_at, decided_at, created_at | Milik satu user dan satu batch; unik per (user_id, batch_id) |
@@ -78,18 +78,20 @@ Table users {
   name varchar
   email varchar [unique]
   password_hash varchar
-  role varchar
+  role_id int [ref: > roles.id]
   created_at timestamp
 }
 
 Table roles {
   id serial [pk]
   name varchar [unique]
+  description varchar
 }
 
 Table permissions {
   id serial [pk]
   code varchar [unique]
+  description varchar
 }
 
 Table role_permissions {
