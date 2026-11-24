@@ -64,6 +64,27 @@ func Conflict(message string) *AppError {
 	return &AppError{Status: fiber.StatusConflict, Code: CodeConflict, Message: message}
 }
 
+func UnsupportedMediaType(message string) *AppError {
+	return &AppError{Status: fiber.StatusUnsupportedMediaType, Code: CodeUnsupportedMedia, Message: message}
+}
+
+func NotAcceptable(message string) *AppError {
+	return &AppError{Status: fiber.StatusNotAcceptable, Code: CodeNotAcceptable, Message: message}
+}
+
+func PayloadTooLarge(message string) *AppError {
+	return &AppError{Status: fiber.StatusRequestEntityTooLarge, Code: CodePayloadTooLarge, Message: message}
+}
+
+func Validation(fields map[string]string) *AppError {
+	return &AppError{
+		Status:  fiber.StatusUnprocessableEntity,
+		Code:    CodeValidation,
+		Message: "validasi gagal",
+		Fields:  fields,
+	}
+}
+
 func TooManyRequests(message string) *AppError {
 	return &AppError{Status: fiber.StatusTooManyRequests, Code: CodeTooManyRequests, Message: message}
 }
