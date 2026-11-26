@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"bansos-backend/helper"
+	"bansos-backend/middleware"
 )
 
 type Dependencies struct {
@@ -20,6 +21,19 @@ type Dependencies struct {
 func Register(app *fiber.App, deps Dependencies) {
 	api := app.Group("/api/v1")
 	api.Get("/health", healthCheck(deps.Pool, deps.Mongo))
+
+	perms := middleware.NewDefaultPermissionSet()
+	api.Get("/me", middleware.RequireAuth, currentUser)
+	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
+	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
+}
+
+func currentUser(c *fiber.Ctx) error {
+	user, ok := helper.CurrentUser(c)
+	if !ok {
+		return helper.Unauthorized("belum terautentikasi")
+	}
+	return helper.Success(c, fiber.StatusOK, "OK", "identitas token", user)
 }
 
 func healthCheck(pool *pgxpool.Pool, mongoClient *mongo.Client) fiber.Handler {
