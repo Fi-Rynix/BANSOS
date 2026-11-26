@@ -1,0 +1,107 @@
+# Seluruh sistem dalam satu perintah: docker compose up -d --build
+#
+# Nilai rahasia (JWT_SECRET, DB_PASSWORD) dibaca dari .env di folder yang sama.
+# Compose hanya mengambil variabel yang disebut di file ini lewat sintaks ${...}.
+
+x-app: &app
+  build: .
+  image: bansos-backend:local
+  restart: unless-stopped
+  environment:
+    APP_NAME: BANSOS
+    APP_PORT: "3000"
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_USER: postgres
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}
+    DB_NAME: bansos_backend
+    DB_SSLMODE: disable
+    DB_MAX_CONNS: "10"
+    JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi di .env}
+    JWT_ISSUER: bansos
+    JWT_ACCESS_TTL_MINUTES: "15"
+    JWT_REFRESH_TTL_DAYS: "7"
+    ALLOWED_ORIGINS: http://localhost:5173
+    MONGO_URI: mongodb://mongo:27017
+    MONGO_DATABASE: bansos_backend
+    MONGO_MAX_POOL: "20"
+    REDIS_ADDR: redis:6379
+    REDIS_PASSWORD: ""
+    REDIS_DB: "0"
+    WORKER_CONCURRENCY: "5"
+    RELAY_INTERVAL_MS: "1000"
+    RELAY_BATCH: "100"
+    MAILER_DELAY_MS: "1500"
+    MAILER_FAIL_EVERY: "0"
+    SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    mongo:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  api:
+    <<: *app
+    command: ["-role=api"]
+    ports:
+      # host:container. Port 8081 dipakai supaya tidak bentrok dengan proyek lain
+      # di laptop yang memakai 8080, dan tidak bentrok dengan go run di 3000.
+      - "8081:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  worker:
+    <<: *app
+    command: ["-role=worker"]
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}
+      POSTGRES_DB: bansos_backend
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bansos_backend"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  mongodata:
+  redisdata:
