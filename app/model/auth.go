@@ -2,11 +2,25 @@ package model
 
 import "time"
 
+const (
+	RoleAdmin     = "admin"
+	RolePengelola = "pengelola"
+	RolePeserta   = "peserta"
+)
+
+func IsKnownRole(role string) bool {
+	switch role {
+	case RoleAdmin, RolePengelola, RolePeserta:
+		return true
+	}
+	return false
+}
+
 type AuthUser struct {
-	UserID   int    `json:"user_id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
+	UserID int    `json:"user_id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 }
 
 type CursorMeta struct {
