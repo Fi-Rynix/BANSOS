@@ -35,6 +35,15 @@ func newValidator() *validator.Validate {
 		return true
 	})
 
+	_ = v.RegisterValidation("modulecode", func(fl validator.FieldLevel) bool {
+		for _, r := range fl.Field().String() {
+			if !(r >= 'A' && r <= 'Z') && !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') && r != '-' {
+				return false
+			}
+		}
+		return true
+	})
+
 	_ = v.RegisterValidation("strongpassword", func(fl validator.FieldLevel) bool {
 		value, ok := fl.Field().Interface().(string)
 		if !ok {
@@ -99,6 +108,8 @@ func messageFor(fe validator.FieldError) string {
 		return "tidak boleh mengandung spasi"
 	case "username":
 		return "hanya boleh huruf, angka, titik, dan garis bawah"
+	case "modulecode":
+		return "hanya boleh huruf, angka, dan tanda hubung"
 	case "strongpassword":
 		if value, ok := fe.Value().(string); ok {
 			return passwordStrengthReason(value)
