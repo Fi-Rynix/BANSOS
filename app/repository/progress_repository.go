@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"bansos-backend/app/model"
-	"bansos-backend/database"
 )
 
 var ErrProgressNotFound = errors.New("progres tidak ditemukan")
@@ -28,7 +27,7 @@ type progressRepository struct {
 }
 
 func NewProgressRepository(db *mongo.Database) ProgressRepository {
-	return &progressRepository{coll: db.Collection(database.CollectionProgress)}
+	return &progressRepository{coll: db.Collection(CollectionProgress)}
 }
 
 func progressFilter(userID, moduleID int) bson.D {
