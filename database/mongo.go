@@ -11,12 +11,6 @@ import (
 	"bansos-backend/config"
 )
 
-const (
-	CollectionModuleContents = "module_contents"
-	CollectionProgress       = "progress"
-	CollectionReviews        = "module_reviews"
-)
-
 func NewMongoClient(ctx context.Context) (*mongo.Client, error) {
 	uri := config.GetEnv("MONGO_URI", "mongodb://localhost:27017")
 

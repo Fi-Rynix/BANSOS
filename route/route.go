@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"bansos-backend/app/repository"
+	"bansos-backend/app/service"
 	"bansos-backend/helper"
 	"bansos-backend/middleware"
 )
@@ -26,6 +28,9 @@ func Register(app *fiber.App, deps Dependencies) {
 	api.Get("/me", middleware.RequireAuth, currentUser)
 	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
 	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
+
+	moduleService := service.NewModuleService(deps.Pool, repository.NewModuleRepository(), perms)
+	RegisterModuleRoutes(api, moduleService, perms)
 }
 
 func currentUser(c *fiber.Ctx) error {
