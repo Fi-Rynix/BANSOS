@@ -18,7 +18,7 @@ type ClaimRepository interface {
 	FindByIDForUpdate(ctx context.Context, db DBTX, id int) (*model.Claim, error)
 	FindByUserAndBatch(ctx context.Context, db DBTX, userID, batchID int) (*model.Claim, error)
 	FindApprovedByUserAndModule(ctx context.Context, db DBTX, userID, moduleID int) (*model.Claim, error)
-	NextWaitlistedForUpdate(ctx context.Context, db DBTX, batchID int) (*model.Claim, error)
+	NextWaitlistedForUpdate(ctx context.Context, db DBTX, batchID, excludeID int) (*model.Claim, error)
 	UpdateStatus(ctx context.Context, db DBTX, id int, status string) (*model.Claim, error)
 	ListByUser(ctx context.Context, db DBTX, filter model.ClaimListFilter) ([]model.ClaimDetail, error)
 	ListByBatch(ctx context.Context, db DBTX, filter model.ClaimListFilter) ([]model.Claim, error)
@@ -86,15 +86,17 @@ func (r *claimRepository) FindApprovedByUserAndModule(ctx context.Context, db DB
 	return scanClaim(row)
 }
 
-func (r *claimRepository) NextWaitlistedForUpdate(ctx context.Context, db DBTX, batchID int) (*model.Claim, error) {
+// NextWaitlistedForUpdate mengambil antrean terdepan. excludeID dipakai supaya
+// klaim yang baru saja dipindah ke daftar tunggu tidak langsung dipromosikan lagi.
+func (r *claimRepository) NextWaitlistedForUpdate(ctx context.Context, db DBTX, batchID, excludeID int) (*model.Claim, error) {
 	row := db.QueryRow(ctx, `
 		SELECT `+claimColumns+`
 		FROM claims c
-		WHERE c.batch_id = $1 AND c.status = $2
+		WHERE c.batch_id = $1 AND c.status = $2 AND c.id <> $3
 		ORDER BY c.created_at, c.id
 		LIMIT 1
 		FOR UPDATE SKIP LOCKED`,
-		batchID, model.ClaimWaitlisted)
+		batchID, model.ClaimWaitlisted, excludeID)
 	return scanClaim(row)
 }
 
