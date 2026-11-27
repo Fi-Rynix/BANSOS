@@ -61,3 +61,8 @@ type ClaimHistoryQuery struct {
 	Limit  int    `query:"limit" validate:"omitempty,min=1,max=100"`
 	Cursor string `query:"cursor"`
 }
+
+type VerifyClaimRequest struct {
+	Status string `json:"status" validate:"required,oneof=approved rejected waitlisted"`
+	Note   string `json:"note" validate:"max=255"`
+}

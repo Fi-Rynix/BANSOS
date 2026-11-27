@@ -20,6 +20,9 @@ type BatchRepository interface {
 	Update(ctx context.Context, db DBTX, id int, req model.UpdateBatchRequest) (*model.Batch, error)
 	UpdateStatus(ctx context.Context, db DBTX, id int, status string) (*model.Batch, error)
 	Delete(ctx context.Context, db DBTX, id int) error
+	TakeSlotInWindow(ctx context.Context, db DBTX, id int) (bool, error)
+	TakeSlot(ctx context.Context, db DBTX, id int) (bool, error)
+	ReleaseSlot(ctx context.Context, db DBTX, id int) error
 }
 
 type batchRepository struct{}
@@ -120,6 +123,48 @@ func (r *batchRepository) Delete(ctx context.Context, db DBTX, id int) error {
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrBatchNotFound
+	}
+	return nil
+}
+
+// TakeSlotInWindow adalah inti war slot: satu UPDATE atomik yang hanya berhasil
+// kalau batch sedang open, waktu sekarang di dalam jendela, dan kuota masih ada.
+// Baris batch terkunci sampai transaksi selesai, jadi tidak mungkin overbooking.
+func (r *batchRepository) TakeSlotInWindow(ctx context.Context, db DBTX, id int) (bool, error) {
+	tag, err := db.Exec(ctx, `
+		UPDATE batches
+		SET allocated = allocated + 1
+		WHERE id = $1
+		  AND status = 'open'
+		  AND now() >= opens_at AND now() < closes_at
+		  AND allocated < quota`, id)
+	if err != nil {
+		return false, fmt.Errorf("mengambil slot: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// TakeSlot dipakai pengelola dan promosi daftar tunggu: tanpa syarat jendela
+// waktu, hanya kuota.
+func (r *batchRepository) TakeSlot(ctx context.Context, db DBTX, id int) (bool, error) {
+	tag, err := db.Exec(ctx, `
+		UPDATE batches SET allocated = allocated + 1
+		WHERE id = $1 AND allocated < quota`, id)
+	if err != nil {
+		return false, fmt.Errorf("mengambil slot: %w", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+func (r *batchRepository) ReleaseSlot(ctx context.Context, db DBTX, id int) error {
+	tag, err := db.Exec(ctx, `
+		UPDATE batches SET allocated = allocated - 1
+		WHERE id = $1 AND allocated > 0`, id)
+	if err != nil {
+		return fmt.Errorf("melepas slot: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("melepas slot batch %d: allocated sudah nol", id)
 	}
 	return nil
 }

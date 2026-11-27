@@ -15,11 +15,13 @@ func newValidator() *validator.Validate {
 	v := validator.New()
 
 	v.RegisterTagNameFunc(func(field reflect.StructField) string {
-		name := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
-		if name == "" || name == "-" {
-			return field.Name
+		for _, tag := range []string{"json", "query"} {
+			name := strings.SplitN(field.Tag.Get(tag), ",", 2)[0]
+			if name != "" && name != "-" {
+				return name
+			}
 		}
-		return name
+		return field.Name
 	})
 
 	_ = v.RegisterValidation("nospace", func(fl validator.FieldLevel) bool {

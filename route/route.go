@@ -33,8 +33,12 @@ func Register(app *fiber.App, deps Dependencies) {
 	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
 	RegisterModuleRoutes(api, moduleService, perms)
 
-	batchService := service.NewBatchService(deps.Pool, repository.NewBatchRepository(), moduleRepo, perms)
+	batchRepo := repository.NewBatchRepository()
+	batchService := service.NewBatchService(deps.Pool, batchRepo, moduleRepo, perms)
 	RegisterBatchRoutes(api, batchService, perms)
+
+	claimService := service.NewClaimService(deps.Pool, repository.NewClaimRepository(), batchRepo, perms)
+	RegisterClaimRoutes(api, claimService, perms)
 }
 
 func currentUser(c *fiber.Ctx) error {
