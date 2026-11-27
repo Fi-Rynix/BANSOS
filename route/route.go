@@ -29,8 +29,12 @@ func Register(app *fiber.App, deps Dependencies) {
 	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
 	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
 
-	moduleService := service.NewModuleService(deps.Pool, repository.NewModuleRepository(), perms)
+	moduleRepo := repository.NewModuleRepository()
+	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
 	RegisterModuleRoutes(api, moduleService, perms)
+
+	batchService := service.NewBatchService(deps.Pool, repository.NewBatchRepository(), moduleRepo, perms)
+	RegisterBatchRoutes(api, batchService, perms)
 }
 
 func currentUser(c *fiber.Ctx) error {
