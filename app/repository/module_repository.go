@@ -16,6 +16,7 @@ type ModuleRepository interface {
 	Create(ctx context.Context, db DBTX, req model.CreateModuleRequest) (*model.Module, error)
 	FindByID(ctx context.Context, db DBTX, id int) (*model.Module, error)
 	FindByIDForUpdate(ctx context.Context, db DBTX, id int) (*model.Module, error)
+	FindByIDForShare(ctx context.Context, db DBTX, id int) (*model.Module, error)
 	List(ctx context.Context, db DBTX, filter model.ModuleListFilter) ([]model.Module, error)
 	Update(ctx context.Context, db DBTX, id int, req model.UpdateModuleRequest) (*model.Module, error)
 	Deactivate(ctx context.Context, db DBTX, id int) error
@@ -58,6 +59,13 @@ func (r *moduleRepository) FindByID(ctx context.Context, db DBTX, id int) (*mode
 
 func (r *moduleRepository) FindByIDForUpdate(ctx context.Context, db DBTX, id int) (*model.Module, error) {
 	row := db.QueryRow(ctx, `SELECT `+moduleColumns+` FROM modules m WHERE m.id = $1 FOR UPDATE`, id)
+	return scanModule(row)
+}
+
+// FindByIDForShare dipakai saat membuat atau membuka batch: modul tidak bisa
+// dinonaktifkan sampai transaksi selesai.
+func (r *moduleRepository) FindByIDForShare(ctx context.Context, db DBTX, id int) (*model.Module, error) {
+	row := db.QueryRow(ctx, `SELECT `+moduleColumns+` FROM modules m WHERE m.id = $1 FOR SHARE`, id)
 	return scanModule(row)
 }
 

@@ -34,16 +34,21 @@ func Register(app *fiber.App, deps Dependencies) {
 		middleware.RequireSelf("id"), currentUser)
 
 	moduleRepo := repository.NewModuleRepository()
-	
+	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
+	RegisterModuleRoutes(api, moduleService, perms)
+
+	batchRepo := repository.NewBatchRepository()
+	batchService := service.NewBatchService(deps.Pool, batchRepo, moduleRepo, perms)
+	RegisterBatchRoutes(api, batchService, perms)
+
+	claimService := service.NewClaimService(deps.Pool, repository.NewClaimRepository(), batchRepo, perms)
+	RegisterClaimRoutes(api, claimService, perms)
+
 	contentRepo := repository.NewContentRepository(deps.Mongo.Database("bansos_backend"))
 	if err := contentRepo.EnsureIndexes(context.Background()); err != nil {
 		panic(fmt.Sprintf("gagal membuat index MongoDB: %v", err))
 	}
-
-	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
 	contentService := service.NewContentService(deps.Pool, contentRepo, moduleRepo, perms)
-
-	RegisterModuleRoutes(api, moduleService, perms)
 	RegisterContentRoutes(api, contentService, perms)
 }
 
