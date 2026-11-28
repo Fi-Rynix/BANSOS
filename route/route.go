@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,8 +27,11 @@ func Register(app *fiber.App, deps Dependencies) {
 
 	perms := middleware.NewDefaultPermissionSet()
 	api.Get("/me", middleware.RequireAuth, currentUser)
-	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
-	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
+	api.Get("/me/progress", middleware.RequireAuth,
+		middleware.RequirePermission(perms, "progress:read:own"), currentUser)
+	api.Get("/admin/users/:id", middleware.RequireAuth,
+		middleware.RequirePermission(perms, "user:manage"),
+		middleware.RequireSelf("id"), currentUser)
 
 	moduleRepo := repository.NewModuleRepository()
 	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
@@ -39,6 +43,13 @@ func Register(app *fiber.App, deps Dependencies) {
 
 	claimService := service.NewClaimService(deps.Pool, repository.NewClaimRepository(), batchRepo, perms)
 	RegisterClaimRoutes(api, claimService, perms)
+
+	contentRepo := repository.NewContentRepository(deps.Mongo.Database("bansos_backend"))
+	if err := contentRepo.EnsureIndexes(context.Background()); err != nil {
+		panic(fmt.Sprintf("gagal membuat index MongoDB: %v", err))
+	}
+	contentService := service.NewContentService(deps.Pool, contentRepo, moduleRepo, perms)
+	RegisterContentRoutes(api, contentService, perms)
 }
 
 func currentUser(c *fiber.Ctx) error {
