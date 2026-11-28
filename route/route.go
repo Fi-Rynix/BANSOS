@@ -18,16 +18,32 @@ type Dependencies struct {
 	Pool          *pgxpool.Pool
 	Mongo         *mongo.Client
 	EnableSwagger bool
+
+	AuthService *service.AuthService
+	UserService *service.UserService
+	Permissions middleware.PermissionSet
 }
 
 func Register(app *fiber.App, deps Dependencies) {
 	api := app.Group("/api/v1")
 	api.Get("/health", healthCheck(deps.Pool, deps.Mongo))
 
-	perms := middleware.NewDefaultPermissionSet()
+	perms := deps.Permissions
 	api.Get("/me", middleware.RequireAuth, currentUser)
 	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
 	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
+
+	auth := api.Group("/auth", middleware.RequireJSON)
+	auth.Post("/register", deps.AuthService.Register)
+	auth.Post("/login", middleware.LoginRateLimiter(), deps.AuthService.Login)
+	auth.Post("/refresh", deps.AuthService.Refresh)
+	auth.Post("/logout", deps.AuthService.Logout)
+	auth.Get("/me", middleware.RequireAuth, deps.AuthService.Me)
+
+	users := api.Group("/admin/users", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"))
+	users.Get("/", deps.UserService.List)
+	users.Get("/:id", deps.UserService.Get)
+	users.Patch("/:id/role", middleware.RequireJSON, deps.UserService.UpdateRole)
 
 	moduleRepo := repository.NewModuleRepository()
 	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
