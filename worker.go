@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -20,15 +21,14 @@ const (
 	relayShutdownTimeout = 10 * time.Second
 )
 
-func startWorker(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool) func() {
+func startWorker(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool) (func(), error) {
 	mailer, err := helper.NewLogMailer(
 		"logs/mail.log",
 		time.Duration(config.GetEnvInt("MAILER_DELAY_MS", 1500))*time.Millisecond,
 		config.GetEnvInt("MAILER_FAIL_EVERY", 0),
 	)
 	if err != nil {
-		logger.Error("gagal menyiapkan mailer", slog.String("error", err.Error()))
-		return nil
+		return nil, fmt.Errorf("menyiapkan mailer: %w", err)
 	}
 
 	outboxRepo := repository.NewOutboxRepository(pool)
@@ -58,9 +58,8 @@ func startWorker(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool) f
 
 	srv := config.NewWorkerServer(logger)
 	if err := srv.Start(mux); err != nil {
-		logger.Error("gagal menyalakan worker", slog.String("error", err.Error()))
 		_ = client.Close()
-		return nil
+		return nil, fmt.Errorf("menyalakan worker: %w", err)
 	}
 
 	workerCtx, cancelWorker := context.WithCancel(ctx)
@@ -89,5 +88,5 @@ func startWorker(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool) f
 			logger.Warn("gagal menutup asynq client",
 				slog.String("error", err.Error()))
 		}
-	})
+	}), nil
 }

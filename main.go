@@ -48,8 +48,10 @@ func main() {
 
 	var stopWorker func()
 	if runWorker {
-		stopWorker = startWorker(ctx, logger, pool)
-		if stopWorker == nil {
+		var err error
+		stopWorker, err = startWorker(ctx, logger, pool)
+		if err != nil {
+			logger.Error("gagal menyalakan worker", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 	}

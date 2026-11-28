@@ -44,7 +44,7 @@ func (w *NotificationWorker) HandleSend(ctx context.Context, t *asynq.Task) erro
 	if err := json.Unmarshal(t.Payload(), &job); err != nil {
 		return fmt.Errorf("%w: payload task rusak: %v", asynq.SkipRetry, err)
 	}
-	
+
 	if w.users == nil {
 		return fmt.Errorf("%w: UserContactFetcher belum dikonfigurasi", asynq.SkipRetry)
 	}
@@ -95,25 +95,36 @@ func (w *NotificationWorker) HandleSend(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("%w: event_type tidak dikenal: %q", asynq.SkipRetry, job.EventType)
 	}
 
-	alreadySent := false
+	claimed := false
 	err := w.tx.WithTxOnce(ctx, func(tx repository.DBTX) error {
-		notifRepo := w.notifications.WithTx(tx)
-		claimed, err := notifRepo.Claim(ctx, model.Notification{
+		var err error
+		claimed, err = w.notifications.WithTx(tx).Claim(ctx, model.Notification{
 			OutboxID:  job.OutboxID,
 			UserID:    userID,
 			Channel:   "email",
 			Subject:   msg.Subject,
 			Body:      msg.Body,
 		})
-		if err != nil {
-			return err
-		}
-		if !claimed {
-			alreadySent = true
-			return nil
-		}
-		return w.mailer.Send(ctx, msg)
+		return err
 	})
+	if err != nil {
+		return err
+	}
+
+	if !claimed {
+		alreadySent := true
+		retry, _ := asynq.GetRetryCount(ctx)
+		w.logger.Info("notification_processed",
+			slog.Int64("outbox_id", job.OutboxID),
+			slog.String("event", job.EventType),
+			slog.Int("user_id", userID),
+			slog.Int("retry", retry),
+			slog.Bool("already_sent", alreadySent),
+		)
+		return nil
+	}
+
+	err = w.mailer.Send(ctx, msg)
 	if errors.Is(err, helper.ErrPermanentDelivery) {
 		return fmt.Errorf("%w: %v", asynq.SkipRetry, err)
 	}
@@ -127,7 +138,7 @@ func (w *NotificationWorker) HandleSend(ctx context.Context, t *asynq.Task) erro
 		slog.String("event", job.EventType),
 		slog.Int("user_id", userID),
 		slog.Int("retry", retry),
-		slog.Bool("already_sent", alreadySent),
+		slog.Bool("already_sent", false),
 	)
 	return nil
 }
