@@ -9,7 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"bansos-backend/app/repository"
 	"bansos-backend/config"
 	"bansos-backend/database"
 	"bansos-backend/route"
@@ -19,12 +18,6 @@ func startAPI(logger *slog.Logger, pool *pgxpool.Pool) *fiber.App {
 	mongoClient, err := database.NewMongoClient(context.Background())
 	if err != nil {
 		logger.Error("gagal terhubung ke MongoDB", slog.String("error", err.Error()))
-		return nil
-	}
-
-	contentRepo := repository.NewContentRepository(mongoClient.Database("bansos_backend"))
-	if err := contentRepo.EnsureIndexes(context.Background()); err != nil {
-		logger.Error("gagal membuat index MongoDB", slog.String("error", err.Error()))
 		return nil
 	}
 

@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -33,10 +34,14 @@ func Register(app *fiber.App, deps Dependencies) {
 		middleware.RequireSelf("id"), currentUser)
 
 	moduleRepo := repository.NewModuleRepository()
+	
 	contentRepo := repository.NewContentRepository(deps.Mongo.Database("bansos_backend"))
+	if err := contentRepo.EnsureIndexes(context.Background()); err != nil {
+		panic(fmt.Sprintf("gagal membuat index MongoDB: %v", err))
+	}
 
 	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
-	contentService := service.NewContentService(deps.Pool, contentRepo, moduleRepo)
+	contentService := service.NewContentService(deps.Pool, contentRepo, moduleRepo, perms)
 
 	RegisterModuleRoutes(api, moduleService, perms)
 	RegisterContentRoutes(api, contentService, perms)

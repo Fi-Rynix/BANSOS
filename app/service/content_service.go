@@ -13,16 +13,23 @@ import (
 )
 
 type ContentService struct {
-	pool       *pgxpool.Pool
+	pool        *pgxpool.Pool
 	contentRepo repository.ContentRepository
 	moduleRepo  repository.ModuleRepository
+	perms       PermissionChecker
 }
 
-func NewContentService(pool *pgxpool.Pool, contentRepo repository.ContentRepository, moduleRepo repository.ModuleRepository) *ContentService {
+func NewContentService(
+	pool *pgxpool.Pool,
+	contentRepo repository.ContentRepository,
+	moduleRepo repository.ModuleRepository,
+	perms PermissionChecker,
+) *ContentService {
 	return &ContentService{
 		pool:        pool,
 		contentRepo: contentRepo,
 		moduleRepo:  moduleRepo,
+		perms:       perms,
 	}
 }
 
@@ -35,8 +42,16 @@ func (s *ContentService) Get(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
 
-	if _, err := s.moduleRepo.FindByID(ctx, s.pool, id); err != nil {
+	mod, err := s.moduleRepo.FindByID(ctx, s.pool, id)
+	if err != nil {
 		return helper.NotFound("modul tidak ditemukan")
+	}
+
+	if !mod.IsActive {
+		user, ok := helper.CurrentUser(c)
+		if !ok || s.perms == nil || !s.perms.Can(user.Role, "content:manage") {
+			return helper.NotFound("modul tidak ditemukan")
+		}
 	}
 
 	content, err := s.contentRepo.GetByModuleID(ctx, id)
