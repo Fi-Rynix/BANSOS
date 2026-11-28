@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 
@@ -70,4 +71,20 @@ func RequireJSON(c *fiber.Ctx) error {
 		return helper.UnsupportedMediaType("Content-Type harus application/json")
 	}
 	return c.Next()
+}
+
+// LoginRateLimiter membatasi percobaan login per IP supaya password tidak bisa
+// ditebak dengan cepat.
+func LoginRateLimiter() fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        5,
+		Expiration: time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			c.Set("Retry-After", "60")
+			return helper.TooManyRequests("terlalu banyak percobaan login, coba lagi dalam satu menit")
+		},
+	})
 }
