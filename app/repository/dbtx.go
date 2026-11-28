@@ -10,6 +10,7 @@ import (
 
 const (
 	codeUniqueViolation      = "23505"
+	codeForeignKeyViolation  = "23503"
 	codeSerializationFailure = "40001"
 	codeDeadlockDetected     = "40P01"
 )
@@ -30,4 +31,8 @@ func pgErrorCode(err error) string {
 
 func IsUniqueViolation(err error) bool {
 	return pgErrorCode(err) == codeUniqueViolation
+}
+
+func IsForeignKeyViolation(err error) bool {
+	return pgErrorCode(err) == codeForeignKeyViolation
 }
