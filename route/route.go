@@ -26,11 +26,20 @@ func Register(app *fiber.App, deps Dependencies) {
 
 	perms := middleware.NewDefaultPermissionSet()
 	api.Get("/me", middleware.RequireAuth, currentUser)
-	api.Get("/me/progress", middleware.RequireAuth, middleware.RequirePermission(perms, "progress:read:own"), currentUser)
-	api.Get("/admin/users/:id", middleware.RequireAuth, middleware.RequirePermission(perms, "user:manage"), middleware.RequireSelf("id"), currentUser)
+	api.Get("/me/progress", middleware.RequireAuth,
+		middleware.RequirePermission(perms, "progress:read:own"), currentUser)
+	api.Get("/admin/users/:id", middleware.RequireAuth,
+		middleware.RequirePermission(perms, "user:manage"),
+		middleware.RequireSelf("id"), currentUser)
 
-	moduleService := service.NewModuleService(deps.Pool, repository.NewModuleRepository(), perms)
+	moduleRepo := repository.NewModuleRepository()
+	contentRepo := repository.NewContentRepository(deps.Mongo.Database("bansos_backend"))
+
+	moduleService := service.NewModuleService(deps.Pool, moduleRepo, perms)
+	contentService := service.NewContentService(deps.Pool, contentRepo, moduleRepo)
+
 	RegisterModuleRoutes(api, moduleService, perms)
+	RegisterContentRoutes(api, contentService, perms)
 }
 
 func currentUser(c *fiber.Ctx) error {
