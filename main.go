@@ -46,17 +46,26 @@ func main() {
 		}
 	}
 
+	var stopWorker func()
 	if runWorker {
-		logger.Warn("worker belum diimplementasikan, menyala tanpa tugas")
+		stopWorker = startWorker(ctx, logger, pool)
+		if stopWorker == nil {
+			os.Exit(1)
+		}
 	}
 
 	logger.Info("aplikasi berjalan", slog.String("role", *role))
 	<-ctx.Done()
+	logger.Info("sinyal shutdown diterima, mulai graceful shutdown")
 
 	if app != nil {
 		if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
 			logger.Error("shutdown HTTP tidak rapi", slog.String("error", err.Error()))
 		}
 	}
+	if stopWorker != nil {
+		stopWorker()
+	}
+
 	logger.Info("aplikasi berhenti dengan rapi")
 }
