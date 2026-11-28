@@ -3,12 +3,15 @@ package middleware
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"bansos-backend/app/model"
 )
 
 const stubTokenPrefix = "stub."
+
+var ErrStubToken = errors.New("stub token dibuang atau tidak sah")
 
 func parseStubToken(token string) (model.AuthUser, error) {
 	if !strings.HasPrefix(token, stubTokenPrefix) {

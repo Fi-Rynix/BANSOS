@@ -21,6 +21,7 @@ x-app: &app
     JWT_ISSUER: bansos
     JWT_ACCESS_TTL_MINUTES: "15"
     JWT_REFRESH_TTL_DAYS: "7"
+    ALLOW_STUB_TOKEN: ${ALLOW_STUB_TOKEN:-false}
     ALLOWED_ORIGINS: http://localhost:5173
     MONGO_URI: mongodb://mongo:27017
     MONGO_DATABASE: bansos_backend
