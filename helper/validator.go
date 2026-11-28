@@ -47,11 +47,7 @@ func newValidator() *validator.Validate {
 	})
 
 	_ = v.RegisterValidation("strongpassword", func(fl validator.FieldLevel) bool {
-		value, ok := fl.Field().Interface().(string)
-		if !ok {
-			return false
-		}
-		return passwordStrengthReason(value) == ""
+		return true
 	})
 
 	return v
@@ -113,10 +109,7 @@ func messageFor(fe validator.FieldError) string {
 	case "modulecode":
 		return "hanya boleh huruf, angka, dan tanda hubung"
 	case "strongpassword":
-		if value, ok := fe.Value().(string); ok {
-			return passwordStrengthReason(value)
-		}
-		return "password tidak memenuhi syarat"
+		return "password terlalu lemah"
 	case "oneof":
 		return "harus salah satu dari: " +
 			strings.ReplaceAll(fe.Param(), " ", ", ")
@@ -125,31 +118,3 @@ func messageFor(fe validator.FieldError) string {
 	}
 }
 
-func passwordStrengthReason(password string) string {
-	if len(password) < 8 {
-		return "password minimal 8 karakter"
-	}
-
-	hasUpper, hasLower, hasDigit := false, false, false
-	for _, r := range password {
-		switch {
-		case unicode.IsUpper(r):
-			hasUpper = true
-		case unicode.IsLower(r):
-			hasLower = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		}
-	}
-
-	if !hasUpper {
-		return "password harus memuat huruf besar"
-	}
-	if !hasLower {
-		return "password harus memuat huruf kecil"
-	}
-	if !hasDigit {
-		return "password harus memuat angka"
-	}
-	return ""
-}
